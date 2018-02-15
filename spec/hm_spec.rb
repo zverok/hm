@@ -106,7 +106,7 @@ RSpec.describe Hm do
       }
     end
 
-    context 'wildcards' do
+    xcontext 'wildcards' do
       its_call(%i[a *] => %i[a x]) {
         is_expected.to ret(a: {x: [1, [{x: 1, y: 2}, {x: 4, y: 5}]]})
       }

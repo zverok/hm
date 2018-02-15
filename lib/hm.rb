@@ -7,25 +7,25 @@ class Hm
   end
 
   def dig(*keys)
-    visit(@hash, *keys,
+    visit(@hash, keys,
       found: ->(_, _, val) { val },
       not_found: ->(*) { }
     )
   end
 
   def dig!(*keys)
-    visit(@hash, *keys,
+    visit(@hash, keys,
       found: ->(_, _, val) { val },
-      not_found: ->(at, key, *rest) {
-        fail KeyError, "Key not found: #{keys[0...-rest.size].map(&:inspect).join('/')}"
+      not_found: ->(at, path, *rest) {
+        fail KeyError, "Key not found: #{path.map(&:inspect).join('/')}"
       }
     )
   end
 
   def bury(*keys, value)
-    visit(@hash, *keys,
-      found: ->(at, key, _) { at[key] = value },
-      not_found: ->(at, key, *rest) { at[key] = nest_hashes(value, *rest) }
+    visit(@hash, keys,
+      found: ->(at, path, _) { at[path.last] = value },
+      not_found: ->(at, path, *rest) { at[path.last] = nest_hashes(value, *rest) }
     )
     self
   end
@@ -36,9 +36,9 @@ class Hm
   end
 
   def remove_key(*keys)
-    visit(@hash, *keys,
-      found: ->(what, key, _) {
-        what.is_a?(Array) ? what.delete_at(key) : what.delete(key)
+    visit(@hash, keys,
+      found: ->(what, path, _) {
+        what.is_a?(Array) ? what.delete_at(path.last) : what.delete(path.last)
       },
       not_found: ->(*) { }
     )
@@ -50,21 +50,21 @@ class Hm
 
   private
 
-  def visit(what, *keys, found:, not_found:)
+  def visit(what, rest, path = [], found:, not_found:)
     what.respond_to?(:dig) or fail TypeError, "#{what.class} is not diggable"
 
-    k = keys.shift
+    k, *rest = rest
     if k == WILDCARD
       iterator = guess_iterator(what)
-      if keys.empty?
-        iterator.map { |key, val| found.(what, key, val) }
+      if rest.empty?
+        iterator.map { |key, val| found.(what, [*path, key], val) }
       else
-        iterator.map { |key, el| visit(el, *keys, found: found, not_found: not_found) }
+        iterator.map { |key, el| visit(el, rest, [*path, key], found: found, not_found: not_found) }
       end
     else
-      internal = what.dig(k) or return not_found.(what, k, *keys)
-      keys.empty? and return found.(what, k, internal)
-      visit(internal, *keys, found: found, not_found: not_found)
+      internal = what.dig(k) or return not_found.(what, [*path, k], *rest)
+      rest.empty? and return found.(what, [*path, k], internal)
+      visit(internal, rest, [*path, k], found: found, not_found: not_found)
     end
   end
 
@@ -72,7 +72,7 @@ class Hm
     to.count(:*) > 1 and raise NotImplementedError, 'Transforming to multi-wildcards is not implemented'
 
     from_values = {}
-    visit(@hash, *from,
+    visit(@hash, from,
       found: ->(at, key, val) { from_values[key] = val },
       # :item, WILDCARD, :price -- one item is priceless, should go to output sequence
       # ...but what if last key is :*? something like from_values.keys.last.succ or?..
