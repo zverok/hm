@@ -7,40 +7,42 @@ class Hm
   end
 
   def dig(*keys)
-    visit(@hash, keys,
-      found: ->(_, _, val) { val },
-      not_found: ->(*) { }
+    visit(
+      @hash, keys,
+      found: ->(_, _, val) { val }
     )
   end
 
   def dig!(*keys)
-    visit(@hash, keys,
+    visit(
+      @hash, keys,
       found: ->(_, _, val) { val },
-      not_found: ->(at, path, *rest) {
+      not_found: ->(_, path, _) {
         fail KeyError, "Key not found: #{path.map(&:inspect).join('/')}"
       }
     )
   end
 
   def bury(*keys, value)
-    visit(@hash, keys,
+    visit(
+      @hash, keys,
       found: ->(at, path, _) { at[path.last] = value },
-      not_found: ->(at, path, *rest) { at[path.last] = nest_hashes(value, *rest) }
+      not_found: ->(at, path, rest) { at[path.last] = nest_hashes(value, *rest) }
     )
     self
   end
 
   def transform(keys_to_keys, &processor)
-    keys_to_keys.each { |from, to| transform_one(from, to, &processor) }
+    keys_to_keys.each { |from, to| transform_one(Array(from), Array(to), &processor) }
     self
   end
 
   def remove_key(*keys)
-    visit(@hash, keys,
+    visit(
+      @hash, keys,
       found: ->(what, path, _) {
         what.is_a?(Array) ? what.delete_at(path.last) : what.delete(path.last)
-      },
-      not_found: ->(*) { }
+      }
     )
   end
 
@@ -50,40 +52,50 @@ class Hm
 
   private
 
-  def visit(what, rest, path = [], found:, not_found:)
+  def visit(what, rest, path = [], found:, not_found: ->(*) {})
     what.respond_to?(:dig) or fail TypeError, "#{what.class} is not diggable"
 
-    k, *rest = rest
-    if k == WILDCARD
-      iterator = guess_iterator(what)
-      if rest.empty?
-        iterator.map { |key, val| found.(what, [*path, key], val) }
-      else
-        iterator.map { |key, el| visit(el, rest, [*path, key], found: found, not_found: not_found) }
-      end
+    key, *rst = rest
+    if key == WILDCARD
+      visit_wildcard(what, rst, path, found: found, not_found: not_found)
     else
-      internal = what.dig(k) or return not_found.(what, [*path, k], *rest)
-      rest.empty? and return found.(what, [*path, k], internal)
-      visit(internal, rest, [*path, k], found: found, not_found: not_found)
+      visit_regular(what, key, rst, path, found: found, not_found: not_found)
     end
   end
 
-  def transform_one(from, to, &processor)
+  def visit_wildcard(what, rest, path, found:, not_found:)
+    iterator = guess_iterator(what)
+    if rest.empty?
+      iterator.map { |key, val| found.(what, [*path, key], val) }
+    else
+      iterator.map { |key, el| visit(el, rest, [*path, key], found: found, not_found: not_found) }
+    end
+  end
+
+  def visit_regular(what, key, rest, path, found:, not_found:) # rubocop:disable Metrics/ParameterLists
+    internal = what.dig(key) or return not_found.(what, [*path, key], rest)
+    rest.empty? and return found.(what, [*path, key], internal)
+    visit(internal, rest, [*path, key], found: found, not_found: not_found)
+  end
+
+  def transform_one(from, to, &_processor) # rubocop:disable Metrics/AbcSize
     to.count(:*) > 1 || from.count(:*) > 1 and
-      raise NotImplementedError, 'Transforming to multi-wildcards is not implemented'
+      fail NotImplementedError, 'Transforming to multi-wildcards is not implemented'
 
     from_values = {}
-    visit(@hash, from,
-      found: ->(at, path, val) { from_values[path] = val },
+    visit(
+      @hash, from,
+      found: ->(_, path, val) { from_values[path] = block_given? ? yield(val) : val },
       # [:item, :*, :price] -- if one item is priceless, should go to output sequence
       # ...but what if last key is :*? something like from_values.keys.last.succ or?..
-      not_found: ->(at, path, rest) { from_values[path + rest] = nil }
+      not_found: ->(_, path, rest) { from_values[path + rest] = nil }
     )
     remove_key(*from)
     if (ti = to.index(:*))
       fi = from.index(:*) # TODO: what if from had no wildcard?
 
-      # we unpack [:items, :*, :price] with keys we got from gathering values, like [:items, 0, :price], [:items, 1, :price] etc.
+      # we unpack [:items, :*, :price] with keys we got from gathering values,
+      # like [:items, 0, :price], [:items, 1, :price] etc.
       from_values
         .map { |key, val| [to.dup.tap { |a| a[ti] = key[fi] }, val] }
         .each { |path, val| bury(*path, val) }

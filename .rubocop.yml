@@ -1,0 +1,53 @@
+#inherit_from: .rubocop_todo.yml
+require: rubocop-rspec
+
+AllCops:
+  Include:
+    - 'lib/**/*'
+    - 'spec/**/*'
+  Exclude:
+    - 'tmp/**/*'
+    - Gemfile
+    - Rakefile
+    - '*.gemspec'
+  DisplayCopNames: true
+  TargetRubyVersion: 2.3
+
+# My style:
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: no_space
+
+Style/SignalException:
+  EnforcedStyle: semantic
+
+Style/EmptyCaseCondition:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/LambdaCall:
+  EnforcedStyle: braces
+
+Style/AndOr:
+  EnforcedStyle: conditionals
+
+# It is experimental. Time to clean up will come!
+
+Metrics/AbcSize:
+  Max: 18
+
+Metrics/MethodLength:
+  Max: 20
+
+Metrics/LineLength:
+  Max: 120
+
+Style/Lambda:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Metrics/ClassLength:
+  Enabled: false

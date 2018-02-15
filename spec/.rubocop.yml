@@ -1,0 +1,16 @@
+inherit_from: ../.rubocop.yml
+
+Style/BlockDelimiters:
+  Enabled: false
+
+Metrics/LineLength:
+  Enabled: false
+
+RSpec/ContextWording:
+  Enabled: false
+
+RSpec/EmptyExampleGroup:
+  CustomIncludeMethods: [its_call]
+
+Metrics/BlockLength:
+  Enabled: false

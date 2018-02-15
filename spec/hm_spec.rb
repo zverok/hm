@@ -123,5 +123,10 @@ RSpec.describe Hm do
         is_expected.to ret(a: {b: 1, is: [{x: 1}, {x: 4}], ys: [{m: 2}, {m: 5}]})
       }
     end
+
+    it 'supports value processing' do
+      expect(hm.transform(%i[a is * y] => :ys, &:to_s).to_h)
+        .to eq(a: {b: 1, is: [{x: 1}, {x: 4}]}, ys: %w[2 5])
+    end
   end
 end
