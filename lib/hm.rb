@@ -69,22 +69,23 @@ class Hm
   end
 
   def transform_one(from, to, &processor)
-    to.count(:*) > 1 and raise NotImplementedError, 'Transforming to multi-wildcards is not implemented'
+    to.count(:*) > 1 || from.count(:*) > 1 and
+      raise NotImplementedError, 'Transforming to multi-wildcards is not implemented'
 
     from_values = {}
     visit(@hash, from,
-      found: ->(at, key, val) { from_values[key] = val },
-      # :item, WILDCARD, :price -- one item is priceless, should go to output sequence
+      found: ->(at, path, val) { from_values[path] = val },
+      # [:item, :*, :price] -- if one item is priceless, should go to output sequence
       # ...but what if last key is :*? something like from_values.keys.last.succ or?..
-      not_found: ->(at, key, *rest) { from_values[rest.last] = nil }
+      not_found: ->(at, path, rest) { from_values[path + rest] = nil }
     )
     remove_key(*from)
-    if (i = to.index(:*))
-      p [from, to, from_values]
+    if (ti = to.index(:*))
+      fi = from.index(:*) # TODO: what if from had no wildcard?
+
       # we unpack [:items, :*, :price] with keys we got from gathering values, like [:items, 0, :price], [:items, 1, :price] etc.
       from_values
-        .map { |key, val| [to.dup.tap { |a| a[i] = key }, val] }
-        .tap(&method(:p))
+        .map { |key, val| [to.dup.tap { |a| a[ti] = key[fi] }, val] }
         .each { |path, val| bury(*path, val) }
     else
       val = from_values.count == 1 ? from_values.values.first : from_values.values
@@ -105,7 +106,8 @@ class Hm
 
   def nest_hashes(value, *keys)
     return value if keys.empty?
-    k = keys.shift
-    keys.empty? ? {k => value} : {k => nest_hashes(value, *keys)}
+    key = keys.shift
+    val = keys.empty? ? value : nest_hashes(value, *keys)
+    key.is_a?(Integer) ? [].tap { |arr| arr[key] = val } : {key => val}
   end
 end

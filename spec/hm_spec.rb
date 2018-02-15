@@ -106,7 +106,7 @@ RSpec.describe Hm do
       }
     end
 
-    xcontext 'wildcards' do
+    context 'wildcards' do
       its_call(%i[a *] => %i[a x]) {
         is_expected.to ret(a: {x: [1, [{x: 1, y: 2}, {x: 4, y: 5}]]})
       }
@@ -114,7 +114,13 @@ RSpec.describe Hm do
         is_expected.to ret(a: {x: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}})
       }
       its_call(%i[a is * y] => %i[a is * yy]) {
-        is_expected.to ret(a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]})
+        is_expected.to ret(a: {b: 1, is: [{x: 1, yy: 2}, {x: 4, yy: 5}]})
+      }
+      its_call(%i[a is * y] => %i[a ys *]) {
+        is_expected.to ret(a: {b: 1, is: [{x: 1}, {x: 4}], ys: [2, 5]})
+      }
+      its_call(%i[a is * y] => %i[a ys * m]) {
+        is_expected.to ret(a: {b: 1, is: [{x: 1}, {x: 4}], ys: [{m: 2}, {m: 5}]})
       }
     end
   end
