@@ -7,28 +7,23 @@ class Hm
   end
 
   def dig(*keys)
-    visit(
-      @hash, keys,
-      found: ->(_, _, val) { val }
-    )
+    visit(@hash, keys) { |_, _, val| val }
   end
 
   def dig!(*keys)
     visit(
       @hash, keys,
-      found: ->(_, _, val) { val },
       not_found: ->(_, path, _) {
         fail KeyError, "Key not found: #{path.map(&:inspect).join('/')}"
       }
-    )
+    ) { |_, _, val| val }
   end
 
   def bury(*keys, value)
     visit(
       @hash, keys,
-      found: ->(at, path, _) { at[path.last] = value },
       not_found: ->(at, path, rest) { at[path.last] = nest_hashes(value, *rest) }
-    )
+    ) { |at, path, _| at[path.last] = value }
     self
   end
 
@@ -37,14 +32,19 @@ class Hm
     self
   end
 
-  def remove_key(*keys)
-    visit(
-      @hash, keys,
-      found: ->(what, path, _) {
-        what.is_a?(Array) ? what.delete_at(path.last) : what.delete(path.last)
-      }
-    )
+  def transform_values(*keys)
+    keys.each do |ks|
+      visit(@hash, ks) { |at, path, val| at[path.last] = yield(val) }
+    end
+    self
   end
+
+  def reject_keys(*keys)
+    keys.each(&method(:reject_one))
+    self
+  end
+
+  alias except reject_keys
 
   def to_h
     @hash
@@ -52,7 +52,7 @@ class Hm
 
   private
 
-  def visit(what, rest, path = [], found:, not_found: ->(*) {})
+  def visit(what, rest, path = [], not_found: ->(*) {}, &found)
     what.respond_to?(:dig) or fail TypeError, "#{what.class} is not diggable"
 
     key, *rst = rest
@@ -68,14 +68,21 @@ class Hm
     if rest.empty?
       iterator.map { |key, val| found.(what, [*path, key], val) }
     else
-      iterator.map { |key, el| visit(el, rest, [*path, key], found: found, not_found: not_found) }
+      iterator.map { |key, el| visit(el, rest, [*path, key], not_found: not_found, &found) }
     end
   end
 
   def visit_regular(what, key, rest, path, found:, not_found:) # rubocop:disable Metrics/ParameterLists
     internal = what.dig(key) or return not_found.(what, [*path, key], rest)
     rest.empty? and return found.(what, [*path, key], internal)
-    visit(internal, rest, [*path, key], found: found, not_found: not_found)
+    visit(internal, rest, [*path, key], not_found: not_found, &found)
+  end
+
+  def reject_one(keys)
+    visit(@hash, keys) do |what, path, _|
+      what.is_a?(Array) ? what.delete_at(path.last) : what.delete(path.last)
+    end
+    self
   end
 
   def transform_one(from, to, &_processor) # rubocop:disable Metrics/AbcSize
@@ -85,14 +92,13 @@ class Hm
     from_values = {}
     visit(
       @hash, from,
-      found: ->(_, path, val) { from_values[path] = block_given? ? yield(val) : val },
       # [:item, :*, :price] -- if one item is priceless, should go to output sequence
       # ...but what if last key is :*? something like from_values.keys.last.succ or?..
       not_found: ->(_, path, rest) { from_values[path + rest] = nil }
-    )
-    remove_key(*from)
+    ) { |_, path, val| from_values[path] = block_given? ? yield(val) : val }
+    reject_one(from)
     if (ti = to.index(:*))
-      fi = from.index(:*) # TODO: what if from had no wildcard?
+      fi = from.index(:*) # TODO: what if `from` had no wildcard?
 
       # we unpack [:items, :*, :price] with keys we got from gathering values,
       # like [:items, 0, :price], [:items, 1, :price] etc.
