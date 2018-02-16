@@ -32,6 +32,11 @@ class Hm
     self
   end
 
+  def update(keys_to_keys, &processor)
+    keys_to_keys.each { |from, to| transform_one(Array(from), Array(to), remove: false, &processor) }
+    self
+  end
+
   def transform_values(*keys)
     keys.each do |ks|
       visit(@hash, ks) { |at, path, val| at[path.last] = yield(val) }
@@ -85,7 +90,7 @@ class Hm
     self
   end
 
-  def transform_one(from, to, &_processor) # rubocop:disable Metrics/AbcSize
+  def transform_one(from, to, remove: true, &_processor) # rubocop:disable Metrics/AbcSize
     to.count(:*) > 1 || from.count(:*) > 1 and
       fail NotImplementedError, 'Transforming to multi-wildcards is not implemented'
 
@@ -96,7 +101,7 @@ class Hm
       # ...but what if last key is :*? something like from_values.keys.last.succ or?..
       not_found: ->(_, path, rest) { from_values[path + rest] = nil }
     ) { |_, path, val| from_values[path] = block_given? ? yield(val) : val }
-    reject_one(from)
+    reject_one(from) if remove
     if (ti = to.index(:*))
       fi = from.index(:*) # TODO: what if `from` had no wildcard?
 

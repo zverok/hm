@@ -129,4 +129,14 @@ RSpec.describe Hm do
         .to eq(a: {b: 1, is: [{x: 1}, {x: 4}]}, ys: %w[2 5])
     end
   end
+
+  describe '#update' do
+    subject { ->(*args) { hm.update(*args).to_h } }
+
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
+    }
+
+    its_call(%i[a b] => %i[a bb]) { is_expected.to ret(a: {b: 1, bb: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}) }
+  end
 end
