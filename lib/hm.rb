@@ -2,25 +2,29 @@ class Hm
   WILDCARD = :*
 
   def initialize(hash)
-    @hash = deep_copy(hash)
+    @hash = Algo.deep_copy(hash)
   end
 
   def dig(*path)
-    visit(@hash, path) { |_, _, val| val }
+    Algo.visit(@hash, path) { |_, _, val| val }
   end
 
   def dig!(*path, &not_found)
     not_found ||=
       ->(_, pth, _) { fail KeyError, "Key not found: #{pth.map(&:inspect).join('/')}" }
-    visit(@hash, path, not_found: not_found) { |_, _, val| val }
+    Algo.visit(@hash, path, not_found: not_found) { |_, _, val| val }
   end
 
   def bury(*path, value)
-    visit(
+    Algo.visit(
       @hash, path,
-      not_found: ->(at, pth, rest) { at[pth.last] = nest_hashes(value, *rest) }
+      not_found: ->(at, pth, rest) { at[pth.last] = Algo.nest_hashes(value, *rest) }
     ) { |at, pth, _| at[pth.last] = value }
     self
+  end
+
+  def visit(*path, not_found: ->(*) {}, &block)
+    Algo.visit(@hash, path, not_found: not_found, &block)
   end
 
   def transform(keys_to_keys, &processor)
@@ -35,14 +39,14 @@ class Hm
 
   def transform_values(*pathes)
     pathes.each do |path|
-      visit(@hash, path) { |at, pth, val| at[pth.last] = yield(val) }
+      Algo.visit(@hash, path) { |at, pth, val| at[pth.last] = yield(val) }
     end
     self
   end
 
   def transform_keys(*pathes)
     if pathes.empty?
-      visit_all(@hash) do |at, path, val|
+      Algo.visit_all(@hash) do |at, path, val|
         if at.is_a?(Hash)
           at.delete(path.last)
           at[yield(path.last)] = val
@@ -50,8 +54,8 @@ class Hm
       end
     else
       pathes.each do |path|
-        visit(@hash, path) do |at, pth, val|
-          delete(at, pth.last)
+        Algo.visit(@hash, path) do |at, pth, val|
+          Algo.delete(at, pth.last)
           at[yield(pth.last)] = val
         end
       end
@@ -61,7 +65,7 @@ class Hm
 
   def except(*pathes)
     pathes.each do |path|
-      visit(@hash, path) { |what, pth, _| delete(what, pth.last) }
+      Algo.visit(@hash, path) { |what, pth, _| Algo.delete(what, pth.last) }
     end
     self
   end
@@ -69,15 +73,15 @@ class Hm
   def slice(*pathes)
     result = Hm.new({})
     pathes.each do |path|
-      visit(@hash, path) { |_, new_path, val| result.bury(*new_path, val) }
+      Algo.visit(@hash, path) { |_, new_path, val| result.bury(*new_path, val) }
     end
     @hash = result.to_h
     self
   end
 
   def compact
-    visit_all(@hash) do |at, path, val|
-      delete(at, path.last) if val.nil?
+    Algo.visit_all(@hash) do |at, path, val|
+      Algo.delete(at, path.last) if val.nil?
     end
   end
 
@@ -87,13 +91,13 @@ class Hm
     # first: {a: {b: []}}
     # second: {a: {}}
     # third: {}
-    # More effective would be some "inside out" visiting, probably
+    # More effective would be some "inside out" Algo.visiting, probably
     until deletions.zero?
       deletions = 0
-      visit_all(@hash) do |at, path, val|
+      Algo.visit_all(@hash) do |at, path, val|
         if val.nil? || val.respond_to?(:empty?) && val.empty?
           deletions += 1
-          delete(at, path.last)
+          Algo.delete(at, path.last)
         end
       end
     end
@@ -103,12 +107,12 @@ class Hm
   def select(*pathes)
     res = Hm.new({})
     if pathes.empty?
-      visit_all(@hash) do |_, path, val|
+      Algo.visit_all(@hash) do |_, path, val|
         res.bury(*path, val) if yield(path, val)
       end
     else
       pathes.each do |path|
-        visit(@hash, path) do |_, pth, val|
+        Algo.visit(@hash, path) do |_, pth, val|
           res.bury(*pth, val) if yield(pth, val)
         end
       end
@@ -119,13 +123,13 @@ class Hm
 
   def reject(*pathes)
     if pathes.empty?
-      visit_all(@hash) do |at, path, val|
-        delete(at, path.last) if yield(path, val)
+      Algo.visit_all(@hash) do |at, path, val|
+        Algo.delete(at, path.last) if yield(path, val)
       end
     else
       pathes.each do |path|
-        visit(@hash, path) do |at, pth, val|
-          delete(at, pth.last) if yield(pth, val)
+        Algo.visit(@hash, path) do |at, pth, val|
+          Algo.delete(at, pth.last) if yield(pth, val)
         end
       end
     end
@@ -145,45 +149,12 @@ class Hm
 
   private
 
-  def visit(what, rest, path = [], not_found: ->(*) {}, &found)
-    what.respond_to?(:dig) or fail TypeError, "#{what.class} is not diggable"
-
-    key, *rst = rest
-    if key == WILDCARD
-      visit_wildcard(what, rst, path, found: found, not_found: not_found)
-    else
-      visit_regular(what, key, rst, path, found: found, not_found: not_found)
-    end
-  end
-
-  def visit_all(what, path = [], &block)
-    guess_iterator(what).to_a.each do |key, val|
-      yield(what, [*path, key], val)
-      visit_all(val, [*path, key], &block) if val.respond_to?(:dig)
-    end
-  end
-
-  def visit_wildcard(what, rest, path, found:, not_found:)
-    iterator = guess_iterator(what)
-    if rest.empty?
-      iterator.map { |key, val| found.(what, [*path, key], val) }
-    else
-      iterator.map { |key, el| visit(el, rest, [*path, key], not_found: not_found, &found) }
-    end
-  end
-
-  def visit_regular(what, key, rest, path, found:, not_found:) # rubocop:disable Metrics/ParameterLists
-    internal = what.dig(key) or return not_found.(what, [*path, key], rest)
-    rest.empty? and return found.(what, [*path, key], internal)
-    visit(internal, rest, [*path, key], not_found: not_found, &found)
-  end
-
   def transform_one(from, to, remove: true, &_processor) # rubocop:disable Metrics/AbcSize,Metrics/PerceivedComplexity,Metrics/CyclomaticComplexity,Metrics/LineLength
     to.count(:*) > 1 || from.count(:*) > 1 and
       fail NotImplementedError, 'Transforming to multi-wildcards is not implemented'
 
     from_values = {}
-    visit(
+    Algo.visit(
       @hash, from,
       # [:item, :*, :price] -- if one item is priceless, should go to output sequence
       # ...but what if last key is :*? something like from_values.keys.last.succ or?..
@@ -203,38 +174,6 @@ class Hm
       bury(*to, val)
     end
   end
-
-  def guess_iterator(what)
-    case
-    when what.respond_to?(:each_pair)
-      what.each_pair.to_a # to_a to avoid "You can't update hash during iteration"
-    when what.respond_to?(:each)
-      what.each_with_index.to_a.map(&:reverse)
-    else
-      fail TypeError, "Can't dig/* in #{what.class}"
-    end
-  end
-
-  def nest_hashes(value, *keys)
-    return value if keys.empty?
-    key = keys.shift
-    val = keys.empty? ? value : nest_hashes(value, *keys)
-    key.is_a?(Integer) ? [].tap { |arr| arr[key] = val } : {key => val}
-  end
-
-  def delete(what, key)
-    what.is_a?(Array) ? what.delete_at(key) : what.delete(key)
-  end
-
-  def deep_copy(what)
-    # FIXME: ignores Struct/OpenStruct (which are diggable too)
-    case what
-    when Hash
-      what.map { |key, val| [key, deep_copy(val)] }.to_h
-    when Array
-      what.map(&method(:deep_copy))
-    else
-      what.dup
-    end
-  end
 end
+
+require_relative 'hm/algo'

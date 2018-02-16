@@ -288,7 +288,8 @@ RSpec.describe Hm do
     subject(:data) {
       {a: {b: nil, is: [{x: 1, y: 2}, {}]}}
     }
-    let!(:res) { hm.cleanup }
+
+    before { hm.cleanup }
 
     it { is_expected.to eq(a: {b: nil, is: [{x: 1, y: 2}, {}]}) }
   end
