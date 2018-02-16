@@ -1,0 +1,3 @@
+--markup=markdown
+--markup-provider=kramdown
+--no-private

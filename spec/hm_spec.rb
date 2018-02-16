@@ -78,6 +78,10 @@ RSpec.describe Hm do
       its_call(:order, :items, :*, :id) { is_expected.to raise_error KeyError }
       its_call(:order, :time, :*) { is_expected.to raise_error TypeError }
     end
+
+    it 'supports default block' do
+      expect(hm.dig!(:order, :total) { 111 }).to eq 111
+    end
   end
 
   describe '#bury' do
@@ -292,5 +296,18 @@ RSpec.describe Hm do
     before { hm.cleanup }
 
     it { is_expected.to eq(a: {b: nil, is: [{x: 1, y: 2}, {}]}) }
+  end
+
+  describe '#visit' do
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4}]}}
+    }
+    it 'works' do
+      found = []
+      not_found = []
+      hm.visit(:a, :is, :*, :y, not_found: ->(*, path, val) { not_found << path }) { |*, path, val| found << [path, val] }
+      expect(found).to eq [[[:a, :is, 0, :y], 2]]
+      expect(not_found).to eq [[:a, :is, 1, :y]]
+    end
   end
 end

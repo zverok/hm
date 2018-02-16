@@ -177,3 +177,7 @@ class Hm
 end
 
 require_relative 'hm/algo'
+
+def Hm(hash) # rubocop:disable Naming/MethodName
+  Hm.new(hash)
+end
