@@ -9,4 +9,5 @@ end
 group :development do
   gem 'rubocop'
   gem 'rubocop-rspec'
+  gem 'benchmark-ips'
 end

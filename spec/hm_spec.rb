@@ -1,6 +1,16 @@
 RSpec.describe Hm do
   subject(:hm) { described_class.new(data) }
 
+  def result_of(method)
+    ->(*args) {
+      if args.last.is_a?(Proc)
+        hm.public_send(method, *args[0..-2], &args.last).to_h
+      else
+        hm.public_send(method, *args).to_h
+      end
+    }
+  end
+
   let(:data) {
     {
       order: {
@@ -71,7 +81,7 @@ RSpec.describe Hm do
   end
 
   describe '#bury' do
-    subject { ->(*args) { hm.bury(*args).to_h } }
+    subject { result_of(:bury) }
 
     let(:data) {
       {a: {b: 1, is: [{x: 1, y: 2}]}}
@@ -93,7 +103,7 @@ RSpec.describe Hm do
   end
 
   describe '#transform' do
-    subject { ->(*args) { hm.transform(*args).to_h } }
+    subject { result_of(:transform) }
 
     let(:data) {
       {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
@@ -131,12 +141,155 @@ RSpec.describe Hm do
   end
 
   describe '#update' do
-    subject { ->(*args) { hm.update(*args).to_h } }
+    subject { result_of(:update) }
 
     let(:data) {
       {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
     }
 
     its_call(%i[a b] => %i[a bb]) { is_expected.to ret(a: {b: 1, bb: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}) }
+  end
+
+  describe '#transform_values' do
+    subject { result_of(:transform_values) }
+
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
+    }
+
+    its_call(%i[a is * y], :to_s.to_proc) {
+      is_expected.to ret(a: {b: 1, is: [{x: 1, y: '2'}, {x: 4, y: '5'}]})
+    }
+
+    its_call(%i[a is * *], :to_s.to_proc) {
+      is_expected.to ret(a: {b: 1, is: [{x: '1', y: '2'}, {x: '4', y: '5'}]})
+    }
+
+    its_call(%i[a is *], :to_s.to_proc) {
+      is_expected.to ret(a: {b: 1, is: ['{:x=>1, :y=>2}', '{:x=>4, :y=>5}']})
+    }
+    its_call(:a, ->(*) { 1 }) {
+      is_expected.to ret(a: 1)
+    }
+  end
+
+  describe '#except' do
+    subject { result_of(:except) }
+
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
+    }
+
+    its_call(%i[a is * y]) {
+      is_expected.to ret(a: {b: 1, is: [{x: 1}, {x: 4}]})
+    }
+    its_call([:a, :is, 1]) {
+      is_expected.to ret(a: {b: 1, is: [{x: 1, y: 2}]})
+    }
+  end
+
+  describe '#slice' do
+    subject { result_of(:slice) }
+
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
+    }
+
+    its_call(%i[a is * y]) {
+      is_expected.to ret(a: {is: [{y: 2}, {y: 5}]})
+    }
+    its_call([:a, :is, 1, :y]) {
+      is_expected.to ret(a: {is: [nil, {y: 5}]})
+    }
+  end
+
+  describe '#transform_keys' do
+    subject { result_of(:transform_keys) }
+
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
+    }
+
+    its_call(:to_s.to_proc) {
+      is_expected.to ret('a' => {'b' => 1, 'is' => [{'x' => 1, 'y' => 2}, {'x' => 4, 'y' => 5}]})
+    }
+    its_call(%i[a is * *], :to_s.to_proc) {
+      is_expected.to ret(a: {b: 1, is: [{'x' => 1, 'y' => 2}, {'x' => 4, 'y' => 5}]})
+    }
+    # TODO: Not sure what will be right thing to do here. Does not work, anyways
+    # its_call(%i[a is *], :succ.to_proc) {
+    #   is_expected.to ret(a: {b: 1, is: [nil, {x: 1, y: 2}, {x: 4, y: 5}]})
+    # }
+  end
+
+  describe '#compact' do
+    subject { result_of(:compact) }
+
+    let(:data) {
+      {a: {b: nil, is: [{x: nil, y: 2}, {x: 4, y: 5}, nil]}}
+    }
+
+    it { is_expected.to ret(a: {is: [{y: 2}, {x: 4, y: 5}]}) }
+  end
+
+  describe '#cleanup' do
+    subject { result_of(:cleanup) }
+
+    let(:data) {
+      {a: {b: nil, c: {}, is: [{x: nil, y: 2}, {x: 4, y: ''}, [nil]]}}
+    }
+
+    it { is_expected.to ret(a: {is: [{y: 2}, {x: 4}]}) }
+  end
+
+  describe '#select' do
+    subject { result_of(:select) }
+
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
+    }
+
+    its_call(->(path, val) { path.last == :y && val > 3 }) {
+      is_expected.to ret(a: {is: [nil, {y: 5}]})
+    }
+    its_call(%i[a is * y], ->(_, val) { val > 3 }) {
+      is_expected.to ret(a: {is: [nil, {y: 5}]})
+    }
+  end
+
+  describe '#reject' do
+    subject { result_of(:reject) }
+
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
+    }
+
+    its_call(->(path, val) { path.last == :y && val < 3 }) {
+      is_expected.to ret(a: {b: 1, is: [{x: 1}, {x: 4, y: 5}]})
+    }
+    its_call(%i[a is * y], ->(_, val) { val < 3 }) {
+      is_expected.to ret(a: {b: 1, is: [{x: 1}, {x: 4, y: 5}]})
+    }
+  end
+
+  describe '#reduce' do
+    subject { result_of(:reduce) }
+
+    let(:data) {
+      {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
+    }
+
+    its_call({%i[a is * y] => %i[a ys]}, :+.to_proc) {
+      is_expected.to ret(a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}], ys: 7})
+    }
+  end
+
+  describe 'immutability of source' do
+    subject(:data) {
+      {a: {b: nil, is: [{x: 1, y: 2}, {}]}}
+    }
+    let!(:res) { hm.cleanup }
+
+    it { is_expected.to eq(a: {b: nil, is: [{x: 1, y: 2}, {}]}) }
   end
 end
