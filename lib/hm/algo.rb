@@ -7,15 +7,20 @@ class Hm
       collection.is_a?(Array) ? collection.delete_at(key) : collection.delete(key)
     end
 
-    def deep_copy(collection)
+    # JRuby, I am looking at you
+    NONDUPABLE = [Symbol, Numeric, NilClass, TrueClass, FalseClass].freeze
+
+    def deep_copy(value)
       # FIXME: ignores Struct/OpenStruct (which are diggable too)
-      case collection
+      case value
       when Hash
-        collection.map { |key, val| [key, deep_copy(val)] }.to_h
+        value.map { |key, val| [key, deep_copy(val)] }.to_h
       when Array
-        collection.map(&method(:deep_copy))
+        value.map(&method(:deep_copy))
+      when *NONDUPABLE
+        value
       else
-        collection.dup
+        value.dup
       end
     end
 
