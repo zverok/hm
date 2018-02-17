@@ -19,7 +19,8 @@ Gem::Specification.new do |s|
   s.required_ruby_version = '>= 2.3.0'
 
   s.add_development_dependency 'yard'
-  s.add_development_dependency 'kramdown'
+  s.add_development_dependency 'redcarpet'
+  s.add_development_dependency 'github-markup'
   s.add_development_dependency 'yard-junk'
 
   s.add_development_dependency 'rspec', '~> 3.7.0'
