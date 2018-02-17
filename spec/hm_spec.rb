@@ -230,7 +230,7 @@ RSpec.describe Hm do
     subject { result_of(:compact) }
 
     let(:data) {
-      {a: {b: nil, is: [{x: nil, y: 2}, {x: 4, y: 5}, nil]}}
+      {a: {b: nil, is: [nil, {x: nil, y: 2}, {x: 4, y: 5}, nil]}}
     }
 
     it { is_expected.to ret(a: {is: [{y: 2}, {x: 4, y: 5}]}) }
@@ -302,10 +302,11 @@ RSpec.describe Hm do
     let(:data) {
       {a: {b: 1, is: [{x: 1, y: 2}, {x: 4}]}}
     }
+
     it 'works' do
       found = []
       not_found = []
-      hm.visit(:a, :is, :*, :y, not_found: ->(*, path, val) { not_found << path }) { |*, path, val| found << [path, val] }
+      hm.visit(:a, :is, :*, :y, not_found: ->(_, path, _) { not_found << path }) { |_, path, val| found << [path, val] }
       expect(found).to eq [[[:a, :is, 0, :y], 2]]
       expect(not_found).to eq [[:a, :is, 1, :y]]
     end

@@ -43,6 +43,7 @@ Metrics/MethodLength:
 
 Metrics/LineLength:
   Max: 120
+  IgnoredPatterns: ['#.+']
 
 Style/Lambda:
   Enabled: false

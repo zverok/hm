@@ -19,14 +19,31 @@ class Hm
       end
     end
 
-    def guess_iterator(collection)
+    def to_pairs(collection)
       case
       when collection.respond_to?(:each_pair)
-        collection.each_pair.to_a # to_a to avoid "You can't update hash during iteration"
+        collection.each_pair.to_a
       when collection.respond_to?(:each)
         collection.each_with_index.to_a.map(&:reverse)
       else
         fail TypeError, "Can't dig/* in #{collection.class}"
+      end
+    end
+
+    # Enumerates through entire collection with "current key/current values" at each point, even
+    # if elements are deleted in a process of enumeration
+    def robust_enumerator(collection)
+      return to_pairs(collection) if collection.is_a?(Hash)
+
+      # Only Arrays need this kind of trickery
+      Enumerator.new do |y|
+        cur = collection.size
+        until cur.zero?
+          pairs = to_pairs(collection)
+          pos = pairs.size - cur
+          y << pairs[pos]
+          cur -= 1
+        end
       end
     end
 
@@ -49,14 +66,14 @@ class Hm
     end
 
     def visit_all(what, path = [], &block)
-      guess_iterator(what).to_a.each do |key, val|
+      robust_enumerator(what).each do |key, val|
         yield(what, [*path, key], val)
         visit_all(val, [*path, key], &block) if val.respond_to?(:dig)
       end
     end
 
     def visit_wildcard(what, rest, path, found:, not_found:)
-      iterator = guess_iterator(what)
+      iterator = robust_enumerator(what)
       if rest.empty?
         iterator.map { |key, val| found.(what, [*path, key], val) }
       else
