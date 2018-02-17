@@ -1,5 +1,8 @@
 # Hm? Hm!
 
+[![Gem Version](https://badge.fury.io/rb/hm.svg)](http://badge.fury.io/rb/hm)
+[![Build Status](https://travis-ci.org/zverok/hm.svg?branch=master)](https://travis-ci.org/zverok/hm)
+
 **Hm** is an experimental Ruby gem trying to provide effective, idiomatic, chainable **H**ash
 **m**odifications (transformations) DSL.
 
@@ -64,11 +67,11 @@ pp Hm.new(weather)
 
 ## Features/problems
 
-* Small, no-dependencies, no-monkeypatching, just "plug and play";
+* Small, no-dependencies, no-monkey patching, just "plug and play";
 * Idiomatic, terse, chainable;
-* Very new and exprimental, works on the cases I've extracted from different production problems and
+* Very new and experimental, works on the cases I've extracted from different production problems and
   invented on the road, but may not work for yours;
-* Most of methods work on Arrays and Hashes, but not on `Struct` and `OpenStruct` (which are
+* Most of the methods work on Arrays and Hashes, but not on `Struct` and `OpenStruct` (which are
   `dig`-able in Ruby), though, base `#dig` and `#dig!` should work on them too;
 * API is subject to polish and change in future.
 
@@ -78,7 +81,7 @@ Install it with `gem install hm` or adding `gem 'hm'` in your `Gemfile`.
 
 One of the most important concepts of `Hm` is "path" through the structure. It is the same list of
 keys Ruby's native `#dig()` supports, with one, yet powerful, addition: `:*` stands for `each` (works
-with any `Enumerable` that is met at structure at this point):
+with any `Enumerable` that is met at the structure at this point):
 
 ```ruby
 order = {
@@ -166,7 +169,7 @@ Hash transformers:
 * https://github.com/solnic/transproc
 * https://github.com/deseretbook/hashformer
 
-Hash pathes:
+Hash paths:
 
 * https://github.com/nickcharlton/keypath-ruby
 * https://github.com/maiha/hash-path
