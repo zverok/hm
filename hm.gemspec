@@ -7,9 +7,9 @@ Gem::Specification.new do |s|
 
   s.summary = 'Idiomatic nested hash modifications'
   s.description = <<-EOF
-    Hm is a library for clean and idiomatic processing of complicated Ruby structures,
+    Hm is a library for clean, idiomatic and chainable processing of complicated Ruby structures,
     typically unpacked from JSON. It provides smart dig and bury, keys replacement,
-    nested transformations and more
+    nested transformations and more.
   EOF
   s.licenses = ['MIT']
 
