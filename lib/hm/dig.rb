@@ -11,7 +11,6 @@ module RubyDig
   end
 end
 
-if RUBY_VERSION < '2.3'
-  Array.send(:include, RubyDig)
-  Hash.send(:include, RubyDig)
-end
+INCLUDE_CLASSES = [Array, Hash].freeze
+
+INCLUDE_CLASSES.each { |klass| klass.send(:include, RubyDig) unless klass.method_defined?(:dig) }
