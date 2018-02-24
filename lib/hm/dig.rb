@@ -7,10 +7,9 @@ class Hm
     def self.dig(what, *keys)
       return what.dig(*keys) if what.respond_to?(:dig)
 
-      if diggable?(what) or fail TypeError, "#{value.class} is not diggable"
-        value = what[keys.shift]
-        (value.nil? || keys.empty?) ? value : dig(value, *keys)
-      end
+      diggable?(what) or fail TypeError, "#{value.class} is not diggable"
+      value = what[keys.shift]
+      value.nil? || keys.empty? ? value : dig(value, *keys)
     end
 
     def self.diggable?(what)
