@@ -1,6 +1,8 @@
+require_relative 'lib/hm/version'
+
 Gem::Specification.new do |s|
   s.name     = 'hm'
-  s.version  = '0.0.1'
+  s.version  = Hm::VERSION
   s.authors  = ['Victor Shepelev']
   s.email    = 'zverok.offline@gmail.com'
   s.homepage = 'https://github.com/zverok/hm'

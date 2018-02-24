@@ -73,6 +73,7 @@ pp Hm.new(weather)
   invented on the road, but may not work for yours;
 * Most of the methods work on Arrays and Hashes, but not on `Struct` and `OpenStruct` (which are
   `dig`-able in Ruby), though, base `#dig` and `#dig!` should work on them too;
+* `Hm(hash).dig(...)` works even on versions of Ruby before 2.3 (when native `#dig` was introduced);
 * API is subject to polish and change in future.
 
 ## Usage

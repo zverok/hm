@@ -475,6 +475,7 @@ class Hm
   end
 end
 
+require_relative 'hm/version'
 require_relative 'hm/algo'
 require_relative 'hm/dig'
 
