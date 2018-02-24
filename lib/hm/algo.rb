@@ -60,7 +60,7 @@ class Hm
     end
 
     def visit(what, rest, path = [], not_found: ->(*) {}, &found)
-      what.respond_to?(:dig) or fail TypeError, "#{what.class} is not diggable"
+      Dig.diggable?(what) or fail TypeError, "#{what.class} is not diggable"
 
       key, *rst = rest
       if key == WILDCARD
@@ -73,7 +73,7 @@ class Hm
     def visit_all(what, path = [], &block)
       robust_enumerator(what).each do |key, val|
         yield(what, [*path, key], val)
-        visit_all(val, [*path, key], &block) if val.respond_to?(:dig)
+        visit_all(val, [*path, key], &block) if Dig.diggable?(val)
       end
     end
 
@@ -87,7 +87,7 @@ class Hm
     end
 
     def visit_regular(what, key, rest, path, found:, not_found:) # rubocop:disable Metrics/ParameterLists
-      internal = what.dig(key) or return not_found.(what, [*path, key], rest)
+      internal = Hm::Dig.dig(what, key) or return not_found.(what, [*path, key], rest)
       rest.empty? and return found.(what, [*path, key], internal)
       visit(internal, rest, [*path, key], not_found: not_found, &found)
     end
