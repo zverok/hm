@@ -24,31 +24,25 @@ class Hm
       end
     end
 
-    def to_pairs(collection)
-      case
-      when collection.respond_to?(:each_pair)
-        collection.each_pair.to_a
-      when collection.respond_to?(:each)
-        collection.each_with_index.to_a.map(&:reverse)
-      else
-        fail TypeError, "Can't dig/* in #{collection.class}"
-      end
-    end
-
-    # Enumerates through entire collection with "current key/current values" at each point, even
+    # Enumerates through entire collection with "current key/current value" at each point, even
     # if elements are deleted in a process of enumeration
     def robust_enumerator(collection)
-      return to_pairs(collection) if collection.is_a?(Hash)
-
-      # Only Arrays need this kind of trickery
-      Enumerator.new do |y|
-        cur = collection.size
-        until cur.zero?
-          pairs = to_pairs(collection)
-          pos = pairs.size - cur
-          y << pairs[pos]
-          cur -= 1
+      case collection
+      when Hash, Struct
+        collection.each_pair.to_a
+      when Array
+        Enumerator.new do |y|
+          cur = collection.size
+          until cur.zero?
+            pos = collection.size - cur
+            y << [pos, collection[pos]]
+            cur -= 1
+          end
         end
+      when ->(c) { c.respond_to?(:each_pair) }
+        collection.each_pair.to_a
+      else
+        fail TypeError, "Can't dig/* in #{collection.class}"
       end
     end
 
