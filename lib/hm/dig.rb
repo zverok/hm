@@ -3,12 +3,12 @@ class Hm
     DIGGABLE_CLASSES = [Hash, Array].freeze
 
     def self.dig(what, *keys)
-      if what.respond_to?(:dig)
-        return what.dig(*keys)
-      elsif diggable?(what)
+      return what.dig(*keys) if what.respond_to?(:dig)
+
+      if diggable?(what)
         value = what[keys.shift]
         return value if value.nil? || keys.empty?
-        return self.dig(value, *keys)
+        return dig(value, *keys)
       end
 
       fail TypeError, "#{value.class} is not diggable"
