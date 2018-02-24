@@ -87,7 +87,7 @@ class Hm
     end
 
     def visit_regular(what, key, rest, path, found:, not_found:) # rubocop:disable Metrics/ParameterLists
-      internal = Hm::Dig.dig(what, key) or return not_found.(what, [*path, key], rest)
+      internal = Dig.dig(what, key) or return not_found.(what, [*path, key], rest)
       rest.empty? and return found.(what, [*path, key], internal)
       visit(internal, rest, [*path, key], not_found: not_found, &found)
     end
