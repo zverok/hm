@@ -476,6 +476,7 @@ class Hm
 end
 
 require_relative 'hm/algo'
+require_relative 'hm/dig'
 
 # Shortcut for {Hm}.new
 def Hm(hash) # rubocop:disable Naming/MethodName
