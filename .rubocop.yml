@@ -33,6 +33,9 @@ Style/LambdaCall:
 Style/AndOr:
   EnforcedStyle: conditionals
 
+Naming/UncommunicativeMethodParamName:
+  AllowedNames: [to]
+
 # It is experimental. Time to clean up will come!
 
 Metrics/AbcSize:

@@ -161,6 +161,10 @@ RSpec.describe Hm do
       {a: {b: 1, is: [{x: 1, y: 2}, {x: 4, y: 5}]}}
     }
 
+    its_call(:to_s.to_proc) {
+      is_expected.to ret(a: {b: '1', is: [{x: '1', y: '2'}, {x: '4', y: '5'}]})
+    }
+
     its_call(%i[a is * y], :to_s.to_proc) {
       is_expected.to ret(a: {b: 1, is: [{x: 1, y: '2'}, {x: 4, y: '5'}]})
     }
@@ -310,5 +314,43 @@ RSpec.describe Hm do
       expect(found).to eq [[[:a, :is, 0, :y], 2]]
       expect(not_found).to eq [[:a, :is, 1, :y]]
     end
+  end
+
+  describe '#partition' do
+    subject { hm.method(:partition) }
+
+    let(:data) {
+      {
+        points: [{x: 1, y: 2}, {x: 3, y: 4}],
+        total: 5,
+        meta: {next: 3, prev: 1}
+      }
+    }
+
+    its_call(:total, %i[points * x], %i[meta next]) {
+      is_expected.to ret(
+        [
+          {total: 5, points: [{x: 1}, {x: 3}], meta: {next: 3}},
+          {points: [{y: 2}, {y: 4}], meta: {prev: 1}}
+        ]
+      )
+    }
+    its_call(:points) {
+      is_expected.to ret(
+        [
+          {points: [{x: 1, y: 2}, {x: 3, y: 4}]},
+          {total: 5, meta: {prev: 1, next: 3}}
+        ]
+      )
+    }
+    its_call(%i[points *]) {
+      is_expected.to ret(
+        [
+          {points: [{x: 1, y: 2}, {x: 3, y: 4}]},
+          # It slices away everything inside points, but not points: key per se
+          {points: [], total: 5, meta: {prev: 1, next: 3}}
+        ]
+      )
+    }
   end
 end

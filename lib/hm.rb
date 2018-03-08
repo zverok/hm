@@ -238,25 +238,30 @@ class Hm
   # Performs specified transformations on values of input sequence, limited only by specified
   # pathes.
   #
-  # @note
-  #   Unlike {#transform_keys}, this method does nothing when no pathes are passed (e.g. not runs
-  #   transformation on each value), because the semantic would be unclear. In our `:order` example,
-  #   list of all items is a value _too_, at `:items` key, so should it be also transformed?
+  # If no `pathes` are passed, all "terminal" values (e.g. not diggable) are yielded and transformed.
   #
   # @example
   #   order = {items: [{title: "Beef", price: 18.0}, {title: "Potato", price: 8.2}], total: 26.2}
   #   Hm(order).transform_values(%i[items * price], :total, &:to_s).to_h
   #   # => {:items=>[{:title=>"Beef", :price=>"18.0"}, {:title=>"Potato", :price=>"8.2"}], :total=>"26.2"}
+  #   Hm(order).transform_values(&:to_s).to_h
+  #   # => {:items=>[{:title=>"Beef", :price=>"18.0"}, {:title=>"Potato", :price=>"8.2"}], :total=>"26.2"}
   #
-  # @see #transform_values
+  # @see #transform_keys
   # @see #transform
   # @param pathes [Array] List of pathes (each being singular key, or array of keys, including
   #   `:*` wildcard) to look at.
   # @yieldparam value [Array] Current value to process.
   # @return [self]
   def transform_values(*pathes)
-    pathes.each do |path|
-      Algo.visit(@hash, path) { |at, pth, val| at[pth.last] = yield(val) }
+    if pathes.empty?
+      Algo.visit_all(@hash) do |at, pth, val|
+        at[pth.last] = yield(val) unless Dig.diggable?(val)
+      end
+    else
+      pathes.each do |path|
+        Algo.visit(@hash, path) { |at, pth, val| at[pth.last] = yield(val) }
+      end
     end
     self
   end
@@ -432,6 +437,30 @@ class Hm
       bury(*to, dig(*from).reduce(&block))
     end
     self
+  end
+
+  # Split hash into two: the one with the substructure matching `pathes`, and the with thos that do
+  # not.
+  #
+  # @example
+  #   order = {items: [{title: "Beef", price: 18.0}, {title: "Potato", price: 8.2}], total: 26.2}
+  #   Hm(order).partition(%i[items * price], :total)
+  #   # => [
+  #   #  {:items=>[{:price=>18.0}, {:price=>8.2}], :total=>26.2},
+  #   #  {:items=>[{:title=>"Beef"}, {:title=>"Potato"}]}
+  #   # ]
+  #
+  # @param pathes [Array] List of pathes (each being singular key, or array of keys, including
+  #   `:*` wildcard) to look at.
+  # @yieldparam value [Array] Current value to process.
+  # @return [Array<Hash>] Two hashes
+  def partition(*pathes)
+    # FIXME: this implementation is naive, it performs 2 additional deep copies and 2 full cycles of
+    # visiting instead of just splitting existing data in one pass. It works, though
+    [
+      Hm(@hash).slice(*pathes).to_h,
+      Hm(@hash).except(*pathes).to_h
+    ]
   end
 
   # Returns the result of all the processings inside the `Hm` object.
