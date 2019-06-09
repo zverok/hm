@@ -48,6 +48,7 @@ class Hm
 
     def nest_hashes(value, *keys)
       return value if keys.empty?
+
       key = keys.shift
       val = keys.empty? ? value : nest_hashes(value, *keys)
       key.is_a?(Integer) ? [].tap { |arr| arr[key] = val } : {key => val}
@@ -81,7 +82,11 @@ class Hm
     end
 
     def visit_regular(what, key, rest, path, found:, not_found:) # rubocop:disable Metrics/ParameterLists
-      internal = Dig.dig(what, key) or return not_found.(what, [*path, key], rest)
+      internal = Dig.dig(what, key)
+
+      # NB: NotFound is signified by special value, because `nil` can still be legitimate value in hash
+      return not_found.(what, [*path, key], rest) if internal == Dig::NotFound
+
       rest.empty? and return found.(what, [*path, key], internal)
       visit(internal, rest, [*path, key], not_found: not_found, &found)
     end

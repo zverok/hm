@@ -209,6 +209,14 @@ RSpec.describe Hm do
     its_call([:a, :is, 1, :y]) {
       is_expected.to ret(a: {is: [nil, {y: 5}]})
     }
+
+    context 'with nils in data' do
+      let(:data) {
+        {a: {b: nil, is: [{x: 1, y: nil}, {x: 4, y: 5}]}, c: nil}
+      }
+
+      its_call(:c) { is_expected.to ret(c: nil) }
+    end
   end
 
   describe '#transform_keys' do

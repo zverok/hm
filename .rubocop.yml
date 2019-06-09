@@ -3,8 +3,8 @@ require: rubocop-rspec
 
 AllCops:
   Include:
-    - 'lib/**/*'
-    - 'spec/**/*'
+    - 'lib/**/*.rb'
+    - 'spec/**/*.rb'
   Exclude:
     - 'tmp/**/*'
     - 'examples/**'
